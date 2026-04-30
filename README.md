@@ -1,37 +1,29 @@
 # Veto Docs
 
-> The operator-governance layer for AI agent payments. Multi-dimensional policy + Ed25519-signed decision receipts + offline verification. Composes with Stripe MPP, x402, AP2, and Verifiable Intent.
+> Authorization for AI agent payments. Multi-dimensional YAML policy + Ed25519-signed decision receipts + offline verification. Composes with Stripe MPP, x402, AP2, and Verifiable Intent.
 
 [![PyPI](https://img.shields.io/pypi/v/veto-cli)](https://pypi.org/project/veto-cli/)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-ELv2-22d3ee.svg)](LICENSE)
 
 This repo holds the public docs, architecture explainers, and integration guides for [Veto](https://veto-ai.com). For the implementation, see:
 
-- 🐍 [`veto-cli`](https://github.com/veto-protocol/veto-cli) — `pip install veto-cli`
-- 📐 [`x402-policy-schema`](https://github.com/veto-protocol/x402-policy-schema) — APPS, the open policy spec
+- 🐍 [`veto-cli`](https://github.com/veto-protocol/veto-cli) — `curl -fsSL https://veto-ai.com/install.sh | bash` (or `pip install veto-cli`)
+- 📐 [`x402-policy-schema`](https://github.com/veto-protocol/x402-policy-schema) — APPS, the open policy spec (MIT)
 - 🔓 [`veto-policies`](https://github.com/veto-protocol/veto-policies) — Veto's own operator policies, published
 
 ---
 
 ## What Veto is, in one paragraph
 
-Stripe Radar gives merchants a policy + signed-decision layer for fraud detection. Veto gives **agent operators** the same primitive for AI agent payments. The company deploying an agent declares a YAML policy (caps, allowlists, escalation thresholds, multi-rail). Every authorize request goes through Veto's engine and produces a signed Ed25519 receipt anyone can verify offline against [our JWKS endpoint](https://veto-ai.com/.well-known/jwks.json). Composes with Stripe MPP / x402 / AP2 / Verifiable Intent — different layer of the agent-commerce stack, complementary to all of them.
-
-## On-chain proof point
-
-April 29, 2026 — first end-to-end live transaction:
-
-> **Tx:** [`0xb13f9ddbd9ff1edba341e96aaeef0cee47510c275656c4cafd1b78375a639b4b`](https://basescan.org/tx/0xb13f9ddbd9ff1edba341e96aaeef0cee47510c275656c4cafd1b78375a639b4b)
-
-A real agent paid Exa.ai $0.007 USDC on Base mainnet for a search query. Veto's engine evaluated the request against the agent's policy, signed the decision, and the agent honored the approve. Three test scenarios (legit / denied-by-allowlist / denied-by-cap) all behaved correctly. Receipt is verifiable forever — the signed JWT is reproducible from policy + input + key, and the on-chain settlement is immutable.
+Veto is the **authorization layer for AI agent payments.** The company deploying an agent declares a YAML policy (caps, allowlists, escalation thresholds, permitted rails). Every authorize request goes through Veto's engine and produces a signed Ed25519 receipt anyone can verify offline against [our JWKS endpoint](https://veto-ai.com/.well-known/jwks.json). Composes with Stripe MPP / x402 / AP2 / Verifiable Intent — different layer of the agent-commerce stack, complementary to all of them.
 
 ---
 
 ## 60-second quickstart
 
 ```bash
-# 1. Install
-pip install veto-cli
+# 1. Install (self-contained venv at ~/.veto)
+curl -fsSL https://veto-ai.com/install.sh | bash
 
 # 2. Register an account from the terminal
 veto register --email me@example.com --preset x402-micropay
@@ -67,7 +59,7 @@ LAYER 3 — Operational policy (OPERATOR → AGENT governance)
 LAYER 2 — Payment rails (settlement)
    MPP (Stripe SPT, HTTP 402)
    x402 (USDC, HTTP 402)
-   Stripe Issuing (cards) | ACH | onchain
+   ACH | onchain
 
 LAYER 1 — Cryptography (signatures, key distribution)
    SD-JWT, JWS, JWK, JWKS, EdDSA, ECDSA
@@ -115,19 +107,26 @@ For the full receipt format spec, see [`docs/receipts.md`](./docs/receipts.md).
 
 ---
 
-## Today: cooperative enforcement. Roadmap: on-chain.
+## v1 — the if-statement is the enforcement
 
-Today, Veto is cooperative. The agent calls `veto authorize`, gets a signed decision, and chooses to obey. If a malicious agent ignored a deny, Veto can't physically stop the on-chain transaction.
+Wire `veto.authorize()` in front of every agent action and have your agent treat the verdict as ground truth: approve → execute, deny → halt, escalate → wait for a human. **Two lines of cooperation, infinite cryptographic auditability.**
 
-This is exactly how Stripe Radar works: your code asks Stripe, Stripe answers, your code obeys. Nobody calls Stripe Radar "fake fraud prevention" because the threat model that matters — bugs, hallucinations, runaway logic — is cooperative-friendly. Same is true for AI agents. Most operators deploy agents they own. The failure modes are LLM hallucinations and bugs, not adversarial intent.
+```python
+verdict = veto.authorize(action)
+if verdict.decision == "approve":
+    execute(action)
+elif verdict.decision == "escalate":
+    notify_human(verdict)
+# deny → drop the action, keep the receipt
+```
 
-For the adversarial case, three real-enforcement paths are on the roadmap. See [`docs/roadmap.md`](./docs/roadmap.md):
+The if-statement is your enforcement point. The receipt is your audit trail. Same operating model as Stripe Radar — your code asks, the engine answers, your code obeys — well-suited to the threat model that matters most: bugs, hallucinations, runaway loops, accidental over-spend.
 
-| Path | Status |
-|---|---|
-| ERC-4337 session keys with policy-derived caps | Planned Q3 |
-| Safe guard modules requiring Veto-signed mandate JWTs | Planned Q4 |
-| Custodial signing | **Intentionally NOT on the roadmap** — would make Veto a regulated money transmitter. Different category. |
+## v2 — enforcement moves to the rail
+
+In v2, the cooperation step disappears. The rails themselves require a Veto signature to settle, so a non-cooperative agent literally can't broadcast the transaction. **Same policy file, same receipt format, same JWKS endpoint — different enforcement surface.** v1 operators carry forward without changes; the receipt format already reserves a `mandate_ref` field for forward compatibility.
+
+Mechanism specifics land closer to ship.
 
 ---
 
