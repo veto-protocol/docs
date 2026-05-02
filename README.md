@@ -132,7 +132,7 @@ Mechanism specifics land closer to ship.
 
 ## Composability with other agent-commerce specs
 
-Veto is the **operator-governance** layer. It composes with everything around it:
+Veto is the **operator-policy** layer for autonomous agent payments. It composes with everything around it:
 
 | Spec | One-line | How it composes with Veto |
 |---|---|---|
@@ -171,8 +171,8 @@ When all four layers exist on a transaction, the agent carries: AP2/VI mandate (
 
 ## Status
 
-v0.5.4 — public, dogfooded, on-chain proof captured. Active development.
+v0.5.4 — public, dogfooded end-to-end. Active development.
 
 ## License
 
-This docs repo: MIT. See [LICENSE](LICENSE). Copyright Investech Global LLC.
+Elastic License v2 (ELv2). See [LICENSE](LICENSE) for the full text and copyright.
