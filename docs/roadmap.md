@@ -10,9 +10,9 @@ What's shipped:
 - ✅ Offline receipt verification (`veto verify` + Python lib)
 - ✅ MCP server with 6 tools — works in Claude Desktop, Cursor, Zed, Continue
 - ✅ 5 policy presets out of the box
-- ✅ x402, MPP, Stripe Issuing, on-chain advisory all enforced via the same engine
+- ✅ x402, MPP, on-chain — same engine, same policy, multi-rail by design
 - ✅ Composability with AP2 / Verifiable Intent (`mandate_ref` field reserved)
-- ✅ Public on-chain proof: agent paid Exa.ai $0.007 USDC on Base, gated through Veto
+- ✅ Dogfooded end-to-end: real agent transaction settled via the engine
 
 **Today's enforcement model is cooperative.** Same as Stripe Radar — your code asks Veto, Veto answers, your code obeys. For the threat model that matters most (LLM hallucinations, runaway logic, cost-runaway, bug-induced spend), that's exactly the right tool.
 

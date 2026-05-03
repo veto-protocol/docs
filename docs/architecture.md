@@ -19,7 +19,7 @@
 │ LAYER 2 — Payment rails (settlement)                                │
 │   MPP (Stripe SPT, HTTP 402)                                        │
 │   x402 (USDC, HTTP 402)                                             │
-│   Stripe Issuing (cards) | ACH | onchain (direct)                   │
+│   Stripe APIs | ACH | onchain (direct)                              │
 ├─────────────────────────────────────────────────────────────────────┤
 │ LAYER 1 — Cryptography (signatures, key distribution)               │
 │   SD-JWT, JWS, JWK, JWKS, EdDSA, ECDSA — what everyone shares       │
@@ -60,7 +60,7 @@ That's the Veto wedge. We're the layer where:
                                                              ▼
 ┌─────────────────────────────────────────────┐    ┌────────────────────┐
 │ LAYER 2 — settlement                        │    │  Receipt is a      │
-│ Stripe MPP / x402 / Stripe Issuing / onchain│    │  permanent audit   │
+│ Stripe MPP / x402 / onchain                 │    │  permanent audit   │
 └─────────────────────────────────────────────┘    │  artifact. Verify  │
                                                     │  offline against   │
                                                     │  veto-ai.com/      │
