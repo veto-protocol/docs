@@ -54,7 +54,7 @@ The "easiest" enforcement path is for Veto to hold the customer's signing key di
 
 The moment Veto holds customer keys:
 
-- **Money transmitter / MSB licensure** — depending on jurisdiction. US: state-by-state. EU: MiCA. UK: FCA. Israel: separate regime. Investech Global LLC isn't equipped for that, and shouldn't be.
+- **Money transmitter / MSB licensure** — depending on jurisdiction. US: state-by-state. EU: MiCA. UK: FCA. Israel: separate regime. We aren't equipped for that, and shouldn't be.
 - **Single point of failure** — one private key compromise = customer funds gone.
 - **Operational scale** — 24/7 keystore HSM, key rotation, separation-of-concerns audits, formal compliance posture.
 - **Brand inversion** — Veto stops being "the policy layer" and starts being "the wallet vendor." Different category, different competition (Coinbase Custody, Fireblocks).
