@@ -144,7 +144,30 @@ veto policy activate <prior-policy-id>
 
 For YAML policy format, see [policies.md](./policies.md).
 
-## 6. (Optional) Wire Veto into Claude Desktop / Cursor
+## 6. Scaffold a runnable governed agent (optional)
+
+```bash
+veto agent init --name my-agent --dir ./my-agent
+```
+
+This generates a runnable TypeScript project with:
+
+- A local viem wallet (private key in `.env` — you own it)
+- An LLM brain you choose during setup (Anthropic Claude / OpenAI / xAI Grok)
+- Tool wrappers for `send_eth`, `send_usdc`, `get_balance`, `get_address`, `policy_update`
+- Every governed call routed through `veto authorize` first
+
+For testnet hard-stop (the smart wallet refuses unauthorized spends at the chain level):
+
+```bash
+veto agent fund      # auto-open a Base Sepolia faucet, poll for funds
+veto agent deploy    # deploy a VetoGuardedAccount smart wallet
+veto agent status    # snapshot of agent + wallet + contract + policy
+```
+
+Once `WALLET_CONTRACT` is set in `.env`, `send_eth` and `send_usdc` calls go through `executeWithMandate(...)` on the deployed contract. The chain refuses spends without a fresh, in-scope, Veto-signed mandate — see [architecture.md](./architecture.md#on-chain-hard-stop--the-contract).
+
+## 7. (Optional) Wire Veto into Claude Desktop / Cursor
 
 If you have a local AI client that speaks MCP:
 
@@ -162,12 +185,12 @@ You have:
 - A registered Veto account (data: `~/.veto/config.json`)
 - A working authorize loop with signed receipts
 - Verified one of those receipts offline against the public JWKS
-- (Optionally) a custom policy and/or MCP integration
+- (Optionally) a custom policy, a scaffolded agent project, and/or MCP integration
 
 Next: integrate `veto authorize` into your agent's pre-payment hook. Your agent calls Veto before each costly action; if Veto approves, the agent proceeds; if Veto denies, the agent refuses. The signed receipt is your audit trail.
 
 For deeper docs:
-- [Architecture](./architecture.md) — where Veto fits in the agent-commerce stack
+- [Architecture](./architecture.md) — where Veto fits in the agent-commerce stack, the engine pipeline, the on-chain hard-stop
 - [Receipts](./receipts.md) — receipt format, signing algorithm, verification
 - [Policies](./policies.md) — YAML format, presets, lifecycle
-- [Roadmap](./roadmap.md) — cooperative today, on-chain enforcement Q3/Q4
+- [Roadmap](./roadmap.md) — what's shipped (v0.6) → what's next (audit + mainnet)

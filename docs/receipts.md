@@ -152,15 +152,18 @@ Canonical reason codes that appear in `receipt.reason_codes`. Internal engine si
 - `MERCHANT_BLOCKLISTED` — merchant on blocklist
 - `MERCHANT_NOT_ALLOWLISTED` — non-empty allowlist + merchant not in it
 - `KNOWN_FRAUD_MERCHANT` — merchant on Veto's fraud DB
-- `TYPOSQUAT_SUSPECTED` — name similar to a well-known brand
+- `TYPOSQUAT_SUSPECTED` — name similar to a well-known brand keyword (legacy)
+- `TYPOSQUAT_CANONICAL` — name similar to an entry in the canonical merchant registry (e.g., `api-anthropc.com` resembles `api.anthropic.com`). Fires for *every* user without an allowlist. Homoglyph-aware.
 - `HIGH_RISK_CATEGORY` — keyword match (gambling, mixer, adult, etc.)
 - `SUSPICIOUS_TLD` — `.xyz`, `.top`, `.click`, etc.
 - `LONG_DOMAIN` / `HYPHEN_HEAVY_DOMAIN` — phishing patterns
 - `ADDRESS_BLOCKLISTED` — destination on operator's blocklist
 - `ADDRESS_NOT_ALLOWLISTED` — non-empty address allowlist + dest not in it
+- `ADDRESS_POISONING_SUSPECTED` — destination shares first/last hex chars with a previously-paid recipient — classic address-poisoning attack pattern
+- `KNOWN_DRAINER_ADDRESS` — destination on Veto's known-drainer list (hard deny)
 - `CHAIN_NOT_ALLOWLISTED` — chain not in operator's chain_allowlist
 - `TOKEN_NOT_ALLOWLISTED` — token contract not in operator's token_allowlist
-- `OFAC_SANCTIONED_ADDRESS` — destination on global sanctions list
+- `OFAC_SANCTIONED_ADDRESS` — destination on the OFAC SDN crypto list (live feed)
 
 ### Approval
 
@@ -170,12 +173,58 @@ Canonical reason codes that appear in `receipt.reason_codes`. Internal engine si
 
 - `PROMPT_INJECTION_DETECTED` — injection patterns in agent context
 - `INTENT_MATCH` / `INTENT_PARTIAL` / `INTENT_MISMATCH` — alignment with agent mission
-- `AMOUNT_ANOMALY` — amount > 3× 30-day rolling avg
+- `INTENT_NO_CONTEXT` — crypto_transfer arrived with no description/context to evaluate intent against (soft signal, neutral)
+- `AMOUNT_ANOMALY` — amount > 3× 30-day rolling avg (legacy fixed-threshold)
 - `VELOCITY_ANOMALY_EXTREME` / `_HIGH` / `_MODERATE` — burst rates
 - `MERCHANT_DIVERSITY_ANOMALY` — many new merchants in 24h
 - `NEW_MERCHANT` — first-time merchant for this agent
+- `NEW_DESTINATION` — first-time crypto recipient for this agent
 - `REPUTATION_NEW` — agent has limited tx history
 - `LLM_RISK_FINAL` — Claude reviewed the case and contributed to the score
+
+### Per-agent baseline signals (v0.6+)
+
+Distinguish "trading bot at 20 tx/min (normal)" from "inference agent suddenly at 20 tx/min (suspicious)". Cold-start at 10 settled transactions.
+
+- `BASELINE_WARMING` — under 10 settled txs, baseline isn't ready yet (neutral)
+- `AMOUNT_ABOVE_BASELINE_P99` — current amount > 2× this agent's p99 baseline
+- `AMOUNT_IN_BASELINE` — current amount within p99 (informational)
+- `VELOCITY_ABOVE_BASELINE` — current 1h velocity > 2× lifetime max for this agent
+- `UNUSUAL_HOUR_FOR_AGENT` — agent has never settled at this UTC hour before
+- `NEW_RECIPIENT_FOR_AGENT` — recipient not in this agent's recent rolling window
+
+## engine_trace and engine_aggregate
+
+Starting in v0.6, the authorize response carries two additional fields alongside the receipt:
+
+```json
+{
+  "transaction_id": "...",
+  "status": "approved",
+  "receipt": "<JWS>",
+  "mandate": "<JWT>",
+  "engine_trace": [
+    { "stage": "policy",            "signals": [...], "decision_impact": "soft_signal" },
+    { "stage": "merchant_fraud",    "signals": [...], "decision_impact": "soft_signal" },
+    { "stage": "crypto",            "signals": [...], "decision_impact": "no_signal" },
+    ...
+  ],
+  "engine_aggregate": {
+    "raw_score": 0.18,
+    "rep_multiplier": 1.0,
+    "rep_adjusted_score": 0.18,
+    "fraud_floor_applied": false,
+    "human_required_floor_applied": false,
+    "llm_final_score": null,
+    "decision_score": 0.18,
+    "auto_approve_threshold": 0.3,
+    "escalate_threshold": 0.7,
+    "decision": "approve"
+  }
+}
+```
+
+`engine_trace` answers "which stage caught what" and `engine_aggregate` answers "what was the math". Together they make "why was this denied?" structurally answerable for any decision.
 
 ## Example: end-to-end verification in pure Python
 

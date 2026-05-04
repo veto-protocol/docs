@@ -1,6 +1,6 @@
 # Roadmap
 
-## Today (v0.5.x — cooperative + verifiable)
+## Today (v0.6 — cooperative + chain-level hard-stop on testnet)
 
 What's shipped:
 
@@ -10,80 +10,67 @@ What's shipped:
 - ✅ Offline receipt verification (`veto verify` + Python lib)
 - ✅ MCP server with 6 tools — works in Claude Desktop, Cursor, Zed, Continue
 - ✅ 5 policy presets out of the box
-- ✅ x402, MPP, on-chain — same engine, same policy, multi-rail by design
-- ✅ Composability with AP2 / Verifiable Intent (`mandate_ref` field reserved)
-- ✅ Dogfooded end-to-end: real agent transaction settled via the engine
+- ✅ Composability with x402, MPP, AP2 / Verifiable Intent (`mandate_ref` reserved)
+- ✅ **Engine improvements** — canonical-merchant typosquat (catches `api-anthropc.com` for every user, no allowlist required), address-poisoning detection, OFAC live feed, per-agent behavioral baselines, structured `engine_trace` per stage
+- ✅ **Mandate JWT format + issuance** — Ed25519 JWT alongside every approve receipt (`typ=mandate+jwt`)
+- ✅ **`@veto/mandate-verifier`** — TS package for offline mandate verification
+- ✅ **`veto agent init/fund/deploy/status`** — scaffold a runnable governed agent in 60 seconds, including an opt-in smart wallet on Base Sepolia
+- ✅ **`VetoGuardedAccount` smart wallet stub on Base Sepolia** — [`0xCBbb…92c5`](https://sepolia.basescan.org/address/0xCBbbC4b924AF40D29f135c3a88b6F650d55d92c5). Real executions, real replay-revert. Source at [`veto-protocol/contracts`](https://github.com/veto-protocol/contracts).
+- ✅ Backend dual-signs mandates (Ed25519 JWT for off-chain consumers + secp256k1 EIP-712 for on-chain `ecrecover`)
+- ✅ Dogfooded end-to-end: agent → veto.authorize → backend signs → contract verifies → settlement; replay attempt rejected on chain (`MandateAlreadySpent()`)
 
-**Today's enforcement model is cooperative.** Same as Stripe Radar — your code asks Veto, Veto answers, your code obeys. For the threat model that matters most (LLM hallucinations, runaway logic, cost-runaway, bug-induced spend), that's exactly the right tool.
+**Today's enforcement model is cooperative by default, hard-stop by opt-in.** Most agents run in cooperative mode (your code asks Veto, Veto answers, your code obeys — same model as Stripe Radar). For adversarial threat models, set `WALLET_CONTRACT` in the agent's `.env` and the smart wallet refuses settlement without a fresh, in-scope, Veto-signed mandate. The contract is unaudited and testnet-only — production audited contracts ship next.
 
-## Q3 — ERC-4337 session keys
+## Next — audit + mainnet hard-stop
 
-For the adversarial case (a non-cooperative agent that ignores Veto's deny), Veto provisions and rotates **session keys** on the customer's ERC-4337 / smart account wallet. Session keys carry on-chain enforced caps and allowlists derived from the customer's APPS policy.
+The Sepolia stub proves the architecture. Next:
 
-**Properties:**
+- **External smart-contract audit** of `VetoGuardedAccount`. Engagement scoping, then 4–6 weeks audit + fix cycle.
+- **Mainnet deploys** — Base, Ethereum, Optimism, Arbitrum. Same contract, audited.
+- **`veto wallet upgrade` CLI** — interactive wizard to deploy + fund + wire `WALLET_CONTRACT` into a customer's existing agent.
 
-- Veto never holds the customer's main key
-- Session keys have on-chain expiry, max amount, allowlisted destinations
-- The smart account contract refuses out-of-policy transactions at the chain level
-- Bypass requires breaking the smart account itself
-- Works wherever ERC-4337 is supported: Base, Arbitrum, Optimism, Polygon zkEVM, etc.
+## ERC-4337 module variant
 
-This corresponds to internal task #16 (ZeroDev AA co-signer integration). Activation gated on user-pulled need — when the first paying customer asks for hard enforcement on a non-cooperative agent, this ships.
+For customers already on ERC-4337 smart accounts (CDP, Privy, Alchemy, ZeroDev, Pimlico, Dynamic), Veto ships an entryPoint validator that requires the same Veto-signed mandate. Same scope, same `jti`, same JWKS. Customers who want `VetoGuardedAccount` semantics on a 4337 account get them without changing wallet vendor.
 
-## Q4 — Safe guard modules + mandate JWTs
+## Safe Guard module
 
-For wallets that aren't ERC-4337 (e.g., Safe), the customer attaches a **guard module** that requires a Veto-signed **mandate JWT** for every transaction. The chain itself rejects any transaction that isn't accompanied by a valid Veto mandate.
+For Safes (treasury / multisig customers): a Guard contract that requires a Veto-signed mandate before any tx is allowed. Same primitive.
 
-**Mandate JWT contents:**
+## Solana variant
 
-- Authorized recipient (chain + address)
-- Maximum amount
-- Nonce (single-use)
-- Expiry (typically 5 minutes)
-- Signature (Ed25519, same key as decision receipts)
+`VetoGuardedAccount` is EVM-specific (`ecrecover`). The Solana variant is a program that verifies Ed25519 signatures on-chain (Solana has the precompile). Same mandate format, different verification surface.
 
-**Forward compatibility:** the receipt format already reserves a `mandate_ref` field (currently null). When Q4 ships, every authorize call also issues a mandate JWT and `mandate_ref` cites it. **Same Ed25519 key, same JWKS endpoint, same audit trail** — just shifts the mandate consumer from "the agent's cooperative code" to "the smart account's guard module."
+## Stripe Issuing webhook (fiat hard-stop, no MSB)
 
-This corresponds to internal task #17 (Phase 3 crypto stack). Same activation gate as Q3 — user-pulled.
+For fiat: integrate with the customer's existing Stripe Issuing account. Stripe pings Veto's authorize endpoint on every card auth (~2 second window); Veto's policy engine returns approve/deny; Stripe enforces card-side. **Customer keeps custody of card + funding; Veto never holds money.** Real fiat hard-stop without becoming a money transmitter.
 
 ## Custodial signing — *not* on the roadmap (intentionally)
 
-The "easiest" enforcement path is for Veto to hold the customer's signing key directly: agent says "pay X"; Veto checks policy; Veto signs (or refuses). One field flip on `crypto_signer.py:mode` from `advisory` to `enforce` and we're there.
+The "easiest" enforcement path would be for Veto to hold the customer's signing key directly. We deliberately stay non-custodial. The moment Veto holds customer keys:
 
-**We deliberately stay non-custodial.**
+- Money transmitter / MSB licensure across US states, MiCA in EU, FCA in UK, Israel's regime
+- Single-point-of-failure key compromise = customer funds gone
+- 24/7 keystore HSM operational burden
+- Brand inversion (Veto becomes "the wallet vendor" instead of "the policy layer")
 
-The moment Veto holds customer keys:
+The on-chain enforcement paths above give us **real chain-level enforcement without custody**. That's the architectural prize.
 
-- **Money transmitter / MSB licensure** — depending on jurisdiction. US: state-by-state. EU: MiCA. UK: FCA. Israel: separate regime. We aren't equipped for that, and shouldn't be.
-- **Single point of failure** — one private key compromise = customer funds gone.
-- **Operational scale** — 24/7 keystore HSM, key rotation, separation-of-concerns audits, formal compliance posture.
-- **Brand inversion** — Veto stops being "the policy layer" and starts being "the wallet vendor." Different category, different competition (Coinbase Custody, Fireblocks).
+## Other items (smaller, soon)
 
-The Q3 (ERC-4337 session keys) and Q4 (Safe guards) paths give us **real on-chain enforcement without custody**. That's the architectural prize.
+- **Dynamic.xyz / Privy embedded wallet templates** — `--wallet-source dynamic` option in `veto agent init`
+- **`veto-sdk` Python package** — thin re-export wrapper over `veto-cli` for SDK-first Python usage
+- **Hosted MCP endpoint** — for users who can't run a local subprocess
+- **Telegram approval bot** — escalation handler for `decision == "escalate"`
+- **Stripe Checkout for Pro/Scale tiers** — paid tier UX
+- **Custom dashboard pages** — replace `/admin/` with a proper metrics + receipts UI
 
-## Why this roadmap order is the right one
-
-1. **Cooperative + cryptographic evidence (today)** is enough for 80–90% of real threat models. Most operators deploy agents they own. The failure modes are bugs and hallucinations.
-2. **ERC-4337 session keys (Q3)** is the right next move because ERC-4337 adoption is genuinely growing (post-Pectra) and the integration is well-understood (ZeroDev does it for many wallets). Customer pull → ship the integration.
-3. **Safe guard modules (Q4)** is where adversarial-agent threat models converge with the AP2 / Verifiable Intent ecosystem. By Q4 the on-chain mandate-JWT pattern will be more widely adopted across the industry, and Veto receipts will compose with it natively.
-4. **Custody is the wrong category** for Veto, period.
+Order of execution depends on customer pull. We don't pre-build features that nobody asked for.
 
 ## What this means for an investor or technical evaluator
 
 A sharp question we expect: *"Can Veto actually stop a malicious agent today?"*
 
-Honest answer: *"No. Today we provide cryptographic decision evidence for cooperative agents. For the adversarial case, Q3 ERC-4337 session keys and Q4 Safe guard modules are the on-chain enforcement paths. Both leverage the existing Ed25519 receipt infrastructure — the receipt format already includes a `mandate_ref` field reserved for the Q4 guard-module integration. We deliberately stay non-custodial to avoid the regulatory cliff that custody implies."*
+Honest answer: *"On Base Sepolia, yes — the deployed `VetoGuardedAccount` contract refuses settlement without a fresh, in-scope, Veto-signed mandate. Replay attempts revert with `MandateAlreadySpent()` on chain. Production-audited contracts on mainnet ship next. For agents that don't opt into the smart wallet, we still provide cryptographic decision evidence on every authorize call — the cooperative model that handles the bug/hallucination/runaway threat models that account for most real failures. We deliberately stay non-custodial to avoid the regulatory cliff that custody implies."*
 
 That holds up under any depth of due diligence.
-
-## Other roadmap items (smaller, soon)
-
-- **`veto-sdk` Python package** — thin re-export wrapper over `veto-cli` for SDK-first Python usage (`import veto_sdk`). Ships when SDK-import users complain about `from veto_cli import api` being awkward.
-- **Hosted MCP endpoint** — for users who can't run a local MCP server. Currently local-only via `veto init`.
-- **Telegram approval bot** — escalation handler for `decision == "escalate"`. Operator gets a Telegram message and approves/denies via inline buttons.
-- **Stripe Checkout for Pro/Scale tiers** — paid tier UX. Blocked on Mercury LLC bank approval → Stripe LLC migration.
-- **Curated allowlist in `x402-micropay` preset** — out-of-the-box gating to known-safe x402 merchants from the CDP Bazaar.
-- **Dedicated `/whoami` endpoint** — replaces the current `verify_key` probe that uses `/authorize` with empty body.
-- **Custom dashboard pages** — replace bare-bones `/admin/` with a proper metrics + receipts UI.
-
-Order of execution depends on customer pull. v1 is about gathering signal, not pre-building features.
