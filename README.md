@@ -1,18 +1,36 @@
-# Veto Docs
+<div align="center">
 
-> **Any agent. Any payment rail. Safe transactions.**
-> The safety layer for the agent economy. Architecture, integration guides, receipt format, on-chain hard-stop.
+<br>
 
-[![PyPI](https://img.shields.io/pypi/v/veto-cli)](https://pypi.org/project/veto-cli/)
-[![License](https://img.shields.io/badge/license-ELv2-22d3ee.svg)](LICENSE)
+<img src="https://veto-ai.com/veto-logo.png" alt="Veto" width="220">
 
-This repo holds the public docs for [Veto](https://veto-ai.com). For implementations:
+<br><br>
 
-- 🐍 [`veto-cli`](https://github.com/veto-protocol/veto-cli) — `pip install veto-cli`. The headline command surface (register, authorize, agent init/fund/deploy/status, verify).
-- 📐 [`x402-policy-schema`](https://github.com/veto-protocol/x402-policy-schema) — APPS, the open policy spec (MIT).
-- 🔓 [`veto-policies`](https://github.com/veto-protocol/veto-policies) — Veto's own operator policies, in the open.
-- 🟦 [`mandate-verifier`](https://github.com/veto-protocol/mandate-verifier) — TS package. Verify a Veto mandate offline.
-- ⛓️ [`contracts`](https://github.com/veto-protocol/contracts) — `VetoGuardedAccount`, the on-chain hard-stop. **Live on Base Sepolia.**
+<h3>Documentation for Veto.</h3>
+
+<p>
+  Architecture, integration guides, receipt format, on-chain hard-stop.<br>
+  Any agent. Any payment rail. Safe transactions.
+</p>
+
+<p>
+  <a href="https://pypi.org/project/veto-cli/"><img src="https://img.shields.io/pypi/v/veto-cli.svg?style=flat-square&color=06B6D4&label=pypi" alt="PyPI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-ELv2-22d3ee?style=flat-square" alt="license"></a>
+  <a href="https://x402.org"><img src="https://img.shields.io/badge/x402-native-10B981?style=flat-square" alt="x402"></a>
+  <a href="https://sepolia.basescan.org/address/0xCBbbC4b924AF40D29f135c3a88b6F650d55d92c5"><img src="https://img.shields.io/badge/Base_Sepolia-live-0052FF?style=flat-square&logo=coinbase&logoColor=white" alt="Base Sepolia live"></a>
+  <a href="https://veto-ai.com/.well-known/jwks.json"><img src="https://img.shields.io/badge/Ed25519-signed_receipts-22d3ee?style=flat-square" alt="signed receipts"></a>
+</p>
+
+<p>
+  <a href="#60-second-quickstart">Quickstart</a> ·
+  <a href="#what-the-engine-catches">Engine</a> ·
+  <a href="#on-chain-hard-stop-live-on-base-sepolia">On-chain</a> ·
+  <a href="#documentation">Docs</a> ·
+  <a href="#composability">Composes</a> ·
+  <a href="#public-artifacts">Artifacts</a>
+</p>
+
+</div>
 
 ---
 
@@ -20,12 +38,29 @@ This repo holds the public docs for [Veto](https://veto-ai.com). For implementat
 
 Veto sits between AI agents and the money. Every spend gets checked against an operator-defined policy in real time, every decision ships with a cryptographically-signed receipt anyone can verify offline, and an optional smart wallet contract refuses unauthorized spends at the chain level. Composes with x402, AP2, Stripe MPP, Verifiable Intent — Veto is one layer above the rail, not the rail itself.
 
+> **Layer 3 — Operational Policy**
+>
+> The agent-commerce stack has rails (x402, MPP, AP2) and consent (Verifiable Intent, AP2 mandates).
+> The layer between agent and rail — *operator-side governance, signed evidence, refusal at the moment of decision* — has been empty.
+> Veto is that layer.
+
+This repo holds the public docs. For implementations:
+
+- 🐍 [`veto-cli`](https://github.com/veto-protocol/veto-cli) — Headline command surface (register, authorize, agent init/fund/deploy/status, verify)
+- 📐 [`x402-policy-schema`](https://github.com/veto-protocol/x402-policy-schema) — APPS, the open policy spec (MIT)
+- 🔓 [`veto-policies`](https://github.com/veto-protocol/veto-policies) — Veto's own operator policies, in the open
+- 🟦 [`mandate-verifier`](https://github.com/veto-protocol/mandate-verifier) — Verify a Veto mandate offline (TS)
+- ⛓️ [`contracts`](https://github.com/veto-protocol/contracts) — `VetoGuardedAccount`, the on-chain hard-stop (live on Base Sepolia)
+
 ---
 
 ## 60-second quickstart
 
 ```bash
-# 1. Install
+# 1. Install — agent-friendly (Claude Code skills, MCP plugins, scripts)
+curl -fsSL https://veto-ai.com/install.sh | bash
+
+# Or human-friendly
 pip install veto-cli
 
 # 2. Register an account from the terminal
@@ -58,10 +93,11 @@ A minimal smart wallet (`VetoGuardedAccount`) holds the agent's funds and only r
 | | |
 |---|---|
 | **Contract** | [`0xCBbbC4b924AF40D29f135c3a88b6F650d55d92c5`](https://sepolia.basescan.org/address/0xCBbbC4b924AF40D29f135c3a88b6F650d55d92c5) |
-| **First mandate execution** | [`0x2f9ec…d2af`](https://sepolia.basescan.org/tx/0x2f9ec691a6f5958bea296c5f630b26d1be1d93667dc3c974671cce0773cad2af) |
-| **Second execution** | [`0xe4112b…5217`](https://sepolia.basescan.org/tx/0xe4112b29c4a80ad337ca45a1599d669fd9853a3a7a8977d52251ce4e8c0e5217) |
-| **Replay rejected** | `MandateAlreadySpent()` selector `0xffa64355` — the chain refused a duplicate |
-| **Source** | https://github.com/veto-protocol/contracts |
+| **First execution** | [`0x2f9ec…d2af`](https://sepolia.basescan.org/tx/0x2f9ec691a6f5958bea296c5f630b26d1be1d93667dc3c974671cce0773cad2af) — 0.000001 ETH transferred |
+| **Second execution** | [`0xe4112b…5217`](https://sepolia.basescan.org/tx/0xe4112b29c4a80ad337ca45a1599d669fd9853a3a7a8977d52251ce4e8c0e5217) — fresh mandate |
+| **Replay rejected** | `MandateAlreadySpent()` selector `0xffa64355` — chain refused a duplicate |
+| **Off-chain verifier** | [`@veto/mandate-verifier`](https://github.com/veto-protocol/mandate-verifier) (TS, Node 18+) |
+| **Source** | [`veto-protocol/contracts`](https://github.com/veto-protocol/contracts) |
 
 Verification: secp256k1 EIP-712 + `ecrecover` (~3k gas). Domain separator binds `chainId` + `verifyingContract` → no cross-chain or cross-contract replay either. Production audited contracts ship in v2.
 
@@ -164,6 +200,16 @@ When all four layers exist on a transaction, the agent carries: AP2/VI mandate (
 
 ---
 
+## Documentation
+
+- 📐 [`docs/architecture.md`](./docs/architecture.md) — the 5-layer stack, the engine pipeline, on-chain hard-stop
+- 🚀 [`docs/quickstart.md`](./docs/quickstart.md) — first 60 seconds (install → authorize → verify → agent init)
+- 📜 [`docs/receipts.md`](./docs/receipts.md) — receipt format spec, signing, verification, audit guarantees
+- 🛡️ [`docs/policies.md`](./docs/policies.md) — YAML policy format, presets, customization, lifecycle
+- 🗺️ [`docs/roadmap.md`](./docs/roadmap.md) — what's shipped (v0.6) → what's next (audit + mainnet hard-stop)
+
+---
+
 ## Public artifacts
 
 | Artifact | URL |
@@ -173,19 +219,9 @@ When all four layers exist on a transaction, the agent carries: AP2/VI mandate (
 | APPS open policy spec | https://github.com/veto-protocol/x402-policy-schema |
 | Mandate verifier (TS) | https://github.com/veto-protocol/mandate-verifier |
 | Smart wallet contract | https://github.com/veto-protocol/contracts |
-| Veto's own policies (transparency) | https://github.com/veto-protocol/veto-policies |
+| Veto's own published policies (transparency) | https://github.com/veto-protocol/veto-policies |
 | JWKS endpoint (public key) | https://veto-ai.com/.well-known/jwks.json |
 | Live contract on Base Sepolia | https://sepolia.basescan.org/address/0xCBbbC4b924AF40D29f135c3a88b6F650d55d92c5 |
-
----
-
-## Documentation
-
-- [`docs/architecture.md`](./docs/architecture.md) — the 5-layer stack, the engine pipeline, on-chain hard-stop
-- [`docs/quickstart.md`](./docs/quickstart.md) — first 60 seconds (pip install → authorize → verify → agent init)
-- [`docs/receipts.md`](./docs/receipts.md) — receipt format spec, signing, verification, audit guarantees
-- [`docs/policies.md`](./docs/policies.md) — YAML policy format, presets, customization, lifecycle
-- [`docs/roadmap.md`](./docs/roadmap.md) — what's shipped (v0.6) → what's next (audit + mainnet hard-stop)
 
 ---
 
@@ -196,3 +232,16 @@ When all four layers exist on a transaction, the agent carries: AP2/VI mandate (
 ## License
 
 Elastic License v2 (ELv2). See [LICENSE](LICENSE) for the full text and copyright.
+
+---
+
+<div align="center">
+
+**Documentation for Veto.**<br>
+<sub>The safety layer for AI agents that spend money.</sub>
+
+<br><br>
+
+<sub>Built by <a href="https://veto-ai.com">Investech Global LLC</a> · part of the <a href="https://github.com/veto-protocol">veto-protocol</a> family.</sub>
+
+</div>
