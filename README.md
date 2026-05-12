@@ -6,249 +6,215 @@
 
 <br><br>
 
-<h3>Documentation for Veto.</h3>
+<h3>The governance layer for AI agent payments.</h3>
 
 <p>
-  Architecture, integration guides, receipt format, on-chain hard-stop.<br>
-  Any agent. Any payment rail. Safe transactions.
+  Veto stands between an agent and the money it's about to spend.<br>
+  Any agent. Any payment rail. Operator-owned policy. Signed receipts. Optional on-chain hard-stop.
 </p>
 
 <p>
+  <a href="https://www.npmjs.com/package/@veto-protocol/cli"><img src="https://img.shields.io/npm/v/@veto-protocol/cli.svg?style=flat-square&color=06B6D4&label=npm" alt="npm"></a>
   <a href="https://pypi.org/project/veto-cli/"><img src="https://img.shields.io/pypi/v/veto-cli.svg?style=flat-square&color=06B6D4&label=pypi" alt="PyPI"></a>
+  <a href="https://veto-ai.com/transparency"><img src="https://img.shields.io/badge/live%20feed-public-22d3ee?style=flat-square" alt="transparency"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-ELv2-22d3ee?style=flat-square" alt="license"></a>
-  <a href="https://x402.org"><img src="https://img.shields.io/badge/x402-native-10B981?style=flat-square" alt="x402"></a>
+  <a href="https://x402.org"><img src="https://img.shields.io/badge/x402-composes-10B981?style=flat-square" alt="x402"></a>
   <a href="https://sepolia.basescan.org/address/0xCBbbC4b924AF40D29f135c3a88b6F650d55d92c5"><img src="https://img.shields.io/badge/EVM-Base%20%C2%B7%20Optimism%20%C2%B7%20Arbitrum%20%C2%B7%20Ethereum%20%C2%B7%20Polygon-0052FF?style=flat-square" alt="EVM rails live"></a>
   <a href="https://github.com/veto-protocol/solana-program"><img src="https://img.shields.io/badge/Solana-Devnet-9945FF?style=flat-square" alt="Solana Devnet live"></a>
-  <a href="https://veto-ai.com/.well-known/jwks.json"><img src="https://img.shields.io/badge/Ed25519-signed_receipts-22d3ee?style=flat-square" alt="signed receipts"></a>
 </p>
 
 <p>
-  <a href="#60-second-quickstart">Quickstart</a> ·
+  <a href="#what-veto-does">What it does</a> ·
+  <a href="#install-and-run-in-one-line">Install</a> ·
+  <a href="#a-real-session">A real session</a> ·
+  <a href="#compose-with-any-rail">Compose with any rail</a> ·
   <a href="#what-the-engine-catches">Engine</a> ·
-  <a href="#on-chain-hard-stop-live-on-base-sepolia">On-chain</a> ·
-  <a href="#documentation">Docs</a> ·
-  <a href="#composability">Composes</a> ·
-  <a href="#public-artifacts">Artifacts</a>
+  <a href="#documentation">Docs</a>
 </p>
 
 </div>
 
 ---
 
-## Veto in one paragraph
+## What Veto does
 
-Veto sits between AI agents and the money. Every spend gets checked against an operator-defined policy in real time, every decision ships with a cryptographically-signed receipt anyone can verify offline, and an optional smart wallet contract refuses unauthorized spends at the chain level. Composes with x402, AP2, Stripe MPP, Verifiable Intent — Veto is one layer above the rail, not the rail itself.
+An AI agent is about to spend its operator's money. Veto checks the spend against the operator's policy first &mdash; caps, time windows, allowlists, rate limits, categories, intent keywords &mdash; and returns a verdict before the rail settles. Every verdict is an Ed25519-signed receipt, viewable at a public URL, verifiable offline. An optional smart wallet refuses any spend the engine didn't bless, on-chain.
 
-> **Layer 3 — Operational Policy**
+**Veto governs. The rail executes.** It composes with x402, pay.sh, Stripe, raw wallets, anything that moves money. It isn't a payment rail; it's the policy a rail has to clear first.
+
+The owner stays in control. The agent stays useful. The receipt is the audit trail.
+
+> **Layer 3 &mdash; Operational policy**
 >
-> The agent-commerce stack has rails (x402, MPP, AP2) and consent (Verifiable Intent, AP2 mandates).
-> The layer between agent and rail — *operator-side governance, signed evidence, refusal at the moment of decision* — has been empty.
-> Veto is that layer.
-
-This repo holds the public docs. For implementations:
-
-- 🪙 [`veto-pay`](https://github.com/veto-protocol/veto-pay) — One-line agent payments, any rail. `pip install veto-pay` / `npm i @veto/pay`
-- 🐍 [`veto-cli`](https://github.com/veto-protocol/veto-cli) — Headline command surface (register, authorize, agent init/fund/deploy/status, verify)
-- 📐 [`x402-policy-schema`](https://github.com/veto-protocol/x402-policy-schema) — APPS, the open policy spec (MIT)
-- 🔓 [`veto-policies`](https://github.com/veto-protocol/veto-policies) — Veto's own operator policies, in the open
-- 🟦 [`mandate-verifier`](https://github.com/veto-protocol/mandate-verifier) — Verify a Veto mandate offline (TS)
-- ⛓️ [`contracts`](https://github.com/veto-protocol/contracts) — `VetoGuardedAccount` (EVM) — Base, Optimism, Arbitrum, Ethereum, Polygon
-- 🌀 [`solana-program`](https://github.com/veto-protocol/solana-program) — `veto_guarded_program` (Anchor, Ed25519) — Devnet today, Mainnet-Beta gated
+> The agent-commerce stack has rails (x402, MPP, AP2) and user consent (Verifiable Intent, AP2 mandates). The layer between agent and rail &mdash; operator-side governance, signed evidence, refusal at the moment of decision &mdash; has been empty. Veto is that layer.
 
 ---
 
-## 60-second quickstart
+## Install and run in one line
+
+Built for Claude Code, Codex, Cursor &mdash; any agent runtime that speaks MCP.
 
 ```bash
-# 1. Install — agent-friendly (Claude Code skills, MCP plugins, scripts)
-curl -fsSL https://veto-ai.com/install.sh | bash
-
-# Or human-friendly
-pip install veto-cli
-
-# 2. Register an account from the terminal
-veto register --email me@example.com --preset inference
-
-# 3. Ask Veto whether an action is allowed
-veto authorize --amount 0.05 --merchant api.openai.com --action payment
-# → APPROVED · risk 0.18 · signed receipt issued
-
-# 4. Verify the receipt offline (no contact with Veto's runtime)
-veto authorize ... --json | jq -r .receipt | veto verify -
-# → ✓ VERIFIED — Ed25519 / engine 0.1.1 + decoded payload
+npx -y @veto-protocol/cli@latest claude "buy weather data for New York"
 ```
 
-That's the cooperative path. To set up a runnable agent with hard-stop:
+That one command installs the Veto skill, wires the MCP server into Claude Code, signs the operator in (magic link by email, no password), and launches the agent. The skill instructs the agent to gate every spend through `veto_authorize` first. The verdict is what controls whether the rail ever sees the request.
+
+For non-MCP runtimes, install the same surface as a library:
 
 ```bash
-veto agent init --name my-agent --dir ./my-agent
-veto agent fund      # auto-open faucet, poll for funds
-veto agent deploy    # deploy the smart wallet on Base Sepolia (default)
-veto agent status    # see agent + wallet + contract + policy state
-
-# Switch network or rail without leaving the CLI:
-veto agent init --name my-agent --network base-mainnet     # mainnet (typed-phrase ack)
-veto agent init --name my-agent --network optimism-sepolia # any EVM
-veto agent init --name my-agent --rail solana              # Solana Devnet
-```
-
-The `pay()` one-liner — drop into any agent runtime:
-
-```python
-from veto_pay import pay
-
-result = await pay(
-    url="https://api.weather.x402.io/forecast",
-    max_amount="$0.05",
-    rail="auto",          # auto | evm | solana
-)
-print(result.tx_hash)     # on-chain settlement
-print(result.receipt)     # signed Veto receipt
+npm i @veto-protocol/pay     # one-line agent payments, any rail
+pip install veto-cli         # YAML policy authoring + offline receipt verify
 ```
 
 ---
 
-## Rail-agnostic enforcement
+## A real session
 
-One JWT mandate format. Per-rail native verifier. Same policy, same receipt.
+The trace below is verbatim from a Claude Code session with Veto and [pay.sh](https://pay.sh) both installed. The agent finds a merchant via pay.sh's discovery skill, gates the spend through Veto, gets denied because the merchant isn't on the operator's allowlist, then walks the operator through what's editable. Nothing is scripted; the agent narrates because the Veto skill instructs it to.
 
-| Rail | Verifier | Status |
-|------|----------|--------|
-| **EVM** — Base, Optimism, Arbitrum, Ethereum, Polygon | `VetoGuardedAccount` (Solidity, secp256k1 + EIP-712 + `ecrecover`) | Testnet live · Mainnet via typed-phrase ack |
-| **Solana** | `veto_guarded_program` (Anchor, Ed25519 sysvar) | Devnet live · Mainnet-Beta via typed-phrase ack |
-| **Card** (Stripe Issuing) | Webhook auth-time verify | Coming next |
-| **Sui / Aptos** | Move module (Ed25519 native) | On the roadmap |
+```
+USER: buy weather data for New York
 
-### EVM hard-stop — live and proven
+AGENT: I'll find a weather provider first, then gate the spend through Veto.
+   → pay.sh skill: searches its x402 catalog
+   ← best fit: bigquery.google.gateway-402.com at $0.001/query
 
-A minimal smart wallet (`VetoGuardedAccount`) holds the agent's funds and only releases them on a fresh, in-scope, Veto-signed mandate. Single-use, time-bound, scope-locked. Same address across every EVM chain via CREATE2.
+AGENT: Best fit is BigQuery's NOAA datasets at $0.001/query. Gating through Veto now.
+   → veto_authorize { amount: 0.001, merchant: "bigquery.google.gateway-402.com", ... }
+   ← deny · risk 1.0 · MERCHANT_NOT_ALLOWLISTED · https://veto-ai.com/r/b237773a-...
 
-| | |
-|---|---|
-| **Contract (Base Sepolia)** | [`0xCBbbC4b924AF40D29f135c3a88b6F650d55d92c5`](https://sepolia.basescan.org/address/0xCBbbC4b924AF40D29f135c3a88b6F650d55d92c5) |
-| **First execution** | [`0x2f9ec…d2af`](https://sepolia.basescan.org/tx/0x2f9ec691a6f5958bea296c5f630b26d1be1d93667dc3c974671cce0773cad2af) — 0.000001 ETH transferred |
-| **Second execution** | [`0xe4112b…5217`](https://sepolia.basescan.org/tx/0xe4112b29c4a80ad337ca45a1599d669fd9853a3a7a8977d52251ce4e8c0e5217) — fresh mandate |
-| **Replay rejected** | `MandateAlreadySpent()` selector `0xffa64355` — chain refused a duplicate |
-| **Off-chain verifier** | [`@veto/mandate-verifier`](https://github.com/veto-protocol/mandate-verifier) (TS, Node 18+) |
-| **Source** | [`veto-protocol/contracts`](https://github.com/veto-protocol/contracts) |
+AGENT: Veto denied. Let me pull the active policy so I can give you concrete options.
+   → veto_policy_show
+   ← { merchant_allowlist: ["api.weather.x402.io", "api.openai.com", ...], ... }
 
-Verification: secp256k1 EIP-712 + `ecrecover` (~3k gas). Domain separator binds `chainId` + `verifyingContract` → no cross-chain or cross-contract replay either. Audited contracts ship in v2.
+AGENT:
+   Veto verdict: DENY
+   - Receipt: https://veto-ai.com/r/b237773a-4d17-4c7e-b9cc-a180cd299dec
+   - Rule that fired: MERCHANT_NOT_ALLOWLISTED — bigquery.google.gateway-402.com
+     isn't in your allowlist. Caps weren't the issue ($0.001 is well under your
+     $1.00 per-tx / $0.50 auto-approve thresholds).
 
-### Solana hard-stop — Devnet today
+   Good news — your policy already allows a weather merchant.
 
-`veto_guarded_program` mirrors the EVM contract on Solana with native Ed25519 verification via the instructions sysvar. Same JWT mandate, no paired signature needed.
+   Your allowlist contains api.weather.x402.io, which looks purpose-built for this.
+   Two paths forward:
 
-- **Source**: [`veto-protocol/solana-program`](https://github.com/veto-protocol/solana-program)
-- **Pattern**: 2-instruction transaction (Ed25519 verify + `execute_with_mandate`)
-- **Status**: v0.6 stub — Devnet live, Mainnet-Beta gated by typed-phrase ack, audit pending
+   Option A — pivot (no policy change): retry against api.weather.x402.io.
+   Option B — extend allowlist: add bigquery.google.gateway-402.com via
+     veto_policy_allowlist_add. Useful for SQL-style historical queries.
+
+   Which do you want? I won't touch the policy or settle anything without
+   your go-ahead.
+```
+
+Two things to notice. First &mdash; the agent showed the operator the receipt URL, not a 2KB JWT. Anyone with that link can verify the decision offline at `/.well-known/jwks.json`. Second &mdash; the agent waited for the operator's go-ahead before mutating the policy. The owner stays in control.
+
+The deny is the onboarding moment. The operator learns the policy is editable by being denied, then offered specific edits with the exact MCP tool that performs them.
+
+For the full walk-through, see [`docs/quickstart.md`](./docs/quickstart.md).
+
+---
+
+## Compose with any rail
+
+Veto is the comma between *agent decides what to buy* and *rail settles the payment*. It doesn't replace the rail; it gates it. Four common shapes:
+
+| Rail | Composition |
+|------|-------------|
+| **[pay.sh](https://pay.sh)** | Already installed? Veto auto-composes. Claude sees both skills, calls `veto_authorize` first, pay.sh settles only on allow. The trace above is exactly that. |
+| **[x402](https://x402.org) direct** | `npm i @veto-protocol/pay` &rarr; `await pay(url, { gate: "veto" })` calls authorize then sends USDC. Same one-liner, governance built in. |
+| **Stripe** | Wrap `stripe.PaymentIntent.create()` with a `vetoAuthorize()` check first. Deny &rarr; don't create the intent. Allow &rarr; settle normally. |
+| **Raw wallet (viem / ethers / web3.js)** | Call `vetoAuthorize()` before `wallet.sendTransaction()`. For chain-level enforcement that can't be bypassed off-chain, deploy [`VetoGuardedAccount`](https://sepolia.basescan.org/address/0xCBbbC4b924AF40D29f135c3a88b6F650d55d92c5) and route spends through it. |
+
+The verdict shape is identical across rails. The receipt is identical. The mandate JWT a smart wallet checks on-chain is identical. One policy, one audit surface, every rail.
+
+---
+
+## Live transparency
+
+Every Veto decision lives at a public URL:
+
+- **`https://veto-ai.com/transparency`** &mdash; firehose of recent allow / deny / escalate decisions across the network, with reason codes and click-through receipts. Anyone can audit the engine. Trust comes from being inspectable, not from a logo.
+- **`https://veto-ai.com/r/<uuid>`** &mdash; individual receipt page. Public, signed, shareable.
+- **`https://veto-ai.com/.well-known/jwks.json`** &mdash; Veto's public Ed25519 keys. Offline receipt verification.
+
+Privacy of individual agents comes from their UUIDs being unguessable; the decision itself is public by design, the way Etherscan or Certificate Transparency logs are.
+
+---
+
+## What the engine catches
+
+Eight stages. Every signal that fires lands in the receipt's `engine_trace`. Every reason code lands in `reason_codes`.
+
+| # | Stage | What it catches |
+|---|---|---|
+| 1 | Operator policy | Caps (per-tx, daily, monthly, per-merchant), time windows, rate limits (count), allowlists, blocklists, categories, required/forbidden intent keywords |
+| 2 | Prompt injection | "Ignore previous instructions" and similar agent-context attacks |
+| 3 | Misspelled merchants | `api-anthropc.com`, `аpple.com` (Cyrillic homoglyph) &mdash; for every operator, allowlist or not |
+| 4 | Crypto safety | OFAC sanctioned addresses (live feed), address poisoning, known-drainer contracts |
+| 5 | Intent | Does the spend match the agent's mission and recent context? Crypto-aware. |
+| 6 | Anomaly | Velocity bursts, merchant-diversity spikes, off-pattern amounts |
+| 7 | Behavior baseline | Per-agent rolling stats (p99 amount, hour-of-day, recipient set) |
+| 8 | Final decision | Weighted aggregation, fraud floor, human-required floor, signed receipt with full trace |
+
+Policy is YAML, versioned, content-hashed; every push creates a new immutable version, every receipt cites the exact `policy_version` and `policy_hash` that produced it.
 
 ---
 
 ## Where Veto sits
 
 ```
-LAYER 5 — Commerce flow (catalog/cart/checkout)
-   ACP (OpenAI + Stripe), Shopify, native APIs
+LAYER 5  Commerce flow (catalog/cart/checkout)
+        ACP (OpenAI + Stripe), Shopify, native APIs
 
-LAYER 4 — User authorization (USER → AGENT consent)
-   Verifiable Intent (Mastercard + Google), AP2 (Google)
-   ↑ user signs a mandate authorizing their agent to spend
+LAYER 4  User authorization (USER &rarr; AGENT consent)
+        Verifiable Intent (Mastercard + Google), AP2 (Google)
+        &uarr; user signs a mandate authorizing their agent to spend
 
-LAYER 3 — Operational policy (OPERATOR → AGENT governance)
-   ★ VETO ★ — multi-dim policy + signed receipts + on-chain hard-stop
-   ↑ operator's policy + cryptographic decision evidence
+LAYER 3  Operational policy (OPERATOR &rarr; AGENT governance)
+        &#9733; VETO &#9733;  multi-dim policy + signed receipts + on-chain hard-stop
+        &uarr; operator's policy + cryptographic decision evidence
 
-LAYER 2 — Payment rails (settlement)
-   x402 (USDC, HTTP 402)
-   MPP (Stripe SPT, HTTP 402)
-   AP2, ACH, direct on-chain
+LAYER 2  Payment rails (settlement)
+        x402 (USDC, HTTP 402)
+        MPP (Stripe SPT, HTTP 402)
+        AP2, ACH, direct on-chain
 
-LAYER 1 — Cryptography (signatures, key distribution)
-   SD-JWT, JWS, JWK, JWKS, EdDSA, ECDSA
+LAYER 1  Cryptography (signatures, key distribution)
+        SD-JWT, JWS, JWK, JWKS, EdDSA, ECDSA
 ```
 
-Visa, Mastercard, Stripe, Google, OpenAI, PayPal — all racing to ship Layers 2 and 4. **Layer 3 is empty.** Payment networks don't build it because their customer is the rail, not the company deploying the agent. Operator-side governance is a pain felt by *companies* deploying agents — that's the Veto wedge.
+Visa, Mastercard, Stripe, Google, OpenAI &mdash; all racing to ship Layers 2 and 4. **Layer 3 is empty.** Payment networks don't build it because their customer is the rail, not the company deploying the agent. Operator-side governance is a pain felt by the *companies* deploying agents. That's the Veto wedge.
 
 For a deeper walk-through, see [`docs/architecture.md`](./docs/architecture.md).
 
 ---
 
-## What's in a receipt
+## On-chain hard-stop (optional, live on Base Sepolia)
 
-Every authorize call produces a JWS-compact receipt (`<header>.<payload>.<signature>`) signed with Ed25519. Decoded:
+For operators who can't trust an off-chain check alone, Veto ships a smart wallet that holds the agent's funds and only releases them on a fresh, in-scope, Veto-signed mandate. Single-use, time-bound, scope-locked. Same address across every EVM chain via CREATE2.
 
-```json
-{
-  "iss": "veto",
-  "sub": "<transaction-uuid>",
-  "iat": 1745783400,
-  "decision": "deny",
-  "decision_layer": "operator_policy",
-  "risk_score": 1.0,
-  "reason_codes": [
-    "AMOUNT_CAP_EXCEEDED",
-    "MERCHANT_NOT_ALLOWLISTED",
-    "TYPOSQUAT_CANONICAL"
-  ],
-  "engine_version": "0.1.1",
-  "input_fingerprint": "5f3c8a9b21e4...",
-  "agent_id": "<uuid>",
-  "client_id": "<uuid>",
-  "policy": {
-    "id": "<uuid>",
-    "version_number": 3,
-    "name": "Custom",
-    "hash": "53aa6184..."
-  },
-  "mandate_ref": null
-}
-```
+| | |
+|---|---|
+| **Contract (Base Sepolia)** | [`0xCBbbC4b924AF40D29f135c3a88b6F650d55d92c5`](https://sepolia.basescan.org/address/0xCBbbC4b924AF40D29f135c3a88b6F650d55d92c5) |
+| **First execution** | [`0x2f9ec…d2af`](https://sepolia.basescan.org/tx/0x2f9ec691a6f5958bea296c5f630b26d1be1d93667dc3c974671cce0773cad2af) &mdash; 0.000001 ETH transferred |
+| **Replay rejected on-chain** | `MandateAlreadySpent()` selector `0xffa64355` |
+| **Off-chain verifier** | [`@veto/mandate-verifier`](https://github.com/veto-protocol/mandate-verifier) (TS, Node 18+) |
 
-Plus the authorize response now carries `engine_trace` (per-stage breakdown) and `engine_aggregate` (final scoring math). For the full spec, see [`docs/receipts.md`](./docs/receipts.md).
+Verification: secp256k1 EIP-712 + `ecrecover` (~3k gas). Domain separator binds `chainId` + `verifyingContract` &mdash; no cross-chain or cross-contract replay. Solana mirrors this with `veto_guarded_program` (Anchor, Ed25519 sysvar) live on Devnet today.
 
----
-
-## What the engine catches
-
-Eight stages. Every signal that fires lands in the receipt's `engine_trace`.
-
-| # | Stage | What it catches |
-|---|---|---|
-| 1 | Your rules | Caps, daily limits, allow- and blocklists for merchants, chains, tokens, addresses |
-| 2 | Prompt-injection | "Ignore previous instructions" patterns and similar agent-context attacks |
-| 3 | Misspelled merchants | `api-anthropc.com`, `аpple.com` (Cyrillic homoglyph) — for *every* user, allowlist or not |
-| 4 | Crypto safety | OFAC sanctioned addresses (live feed), address-poisoning attacks, known-drainer contracts |
-| 5 | Intent | Does the spend match the agent's mission and recent context? Crypto-aware. |
-| 6 | Anomaly | Velocity bursts, merchant-diversity spikes, off-pattern amounts |
-| 7 | Behavior baseline | Per-agent rolling stats (p99 amount, hour-of-day, recipient set) |
-| 8 | Final decision | Weighted aggregation, fraud floor, human-required floor, signed receipt with full trace |
-
----
-
-## Composability
-
-Veto is the **operator-policy** layer. It composes with everything around it:
-
-| Spec | One-line | How it composes with Veto |
-|---|---|---|
-| [x402](https://www.x402.org/) | Payment rail (HTTP 402 + USDC on Base) | Veto authorizes, x402 settles |
-| [pay.sh](https://pay.sh) (Solana + Google Cloud) | Hosted x402 aggregator on Solana, 75+ APIs | Veto pre-flight checks every call; hard-stop via `veto_guarded_program` |
-| [Stripe MPP](https://stripe.com/blog/machine-payments-protocol) | Payment rail (HTTP 402 + Stripe SPT) | Veto sits above; rail handles settlement |
-| [AP2](https://ap2-protocol.org/) (Google) | User → Agent authorization (mandate JWTs) | Different layer (Layer 4); receipts can cite an upstream AP2 mandate via `mandate_ref` |
-| [Verifiable Intent](https://verifiableintent.dev/) (Mastercard + Google) | Sibling of AP2; same primitive | Same composition pattern |
-| [ACP](https://www.agenticcommerce.dev/) (OpenAI + Stripe) | Catalog/cart/checkout API | Layer 5; orthogonal |
-
-When all four layers exist on a transaction, the agent carries: AP2/VI mandate (legal consent), Veto receipt (operational compliance), ACP merchant flow (commerce), MPP/x402 settlement (money). All four produce signed credentials. Together they're the audit trail.
+Audited mainnet contracts ship in v2.
 
 ---
 
 ## Documentation
 
-- 📐 [`docs/architecture.md`](./docs/architecture.md) — the 5-layer stack, the engine pipeline, on-chain hard-stop
-- 🚀 [`docs/quickstart.md`](./docs/quickstart.md) — first 60 seconds (install → authorize → verify → agent init)
-- 📜 [`docs/receipts.md`](./docs/receipts.md) — receipt format spec, signing, verification, audit guarantees
-- 🛡️ [`docs/policies.md`](./docs/policies.md) — YAML policy format, presets, customization, lifecycle
-- 🗺️ [`docs/roadmap.md`](./docs/roadmap.md) — what's shipped (v0.6) → what's next (audit + mainnet hard-stop)
+- 🚀 [`docs/quickstart.md`](./docs/quickstart.md) &mdash; install, dogfood the deny-then-fix loop, compose with your rail
+- 🛡️ [`docs/policies.md`](./docs/policies.md) &mdash; YAML format, the 8 policy knobs, edit-from-Claude tools
+- 📜 [`docs/receipts.md`](./docs/receipts.md) &mdash; receipt format, signing, offline verification, the `/r/<uuid>` URL
+- 📐 [`docs/architecture.md`](./docs/architecture.md) &mdash; the 5-layer stack, the engine pipeline, on-chain hard-stop
+- 🗺️ [`docs/roadmap.md`](./docs/roadmap.md) &mdash; what shipped, what's next, what's gated by audit
 
 ---
 
@@ -256,23 +222,25 @@ When all four layers exist on a transaction, the agent carries: AP2/VI mandate (
 
 | Artifact | URL |
 |---|---|
+| `@veto-protocol/cli` (npm) | https://www.npmjs.com/package/@veto-protocol/cli |
+| `@veto-protocol/pay` (npm) | https://www.npmjs.com/package/@veto-protocol/pay |
 | `veto-pay` (PyPI) | https://pypi.org/project/veto-pay/ |
-| `@veto/pay` (npm) | https://www.npmjs.com/package/@veto/pay |
 | `veto-cli` (PyPI) | https://pypi.org/project/veto-cli/ |
-| CLI source | https://github.com/veto-protocol/veto-cli |
+| Live transparency feed | https://veto-ai.com/transparency |
+| Public receipt URL pattern | https://veto-ai.com/r/&lt;uuid&gt; |
+| JWKS (public key) | https://veto-ai.com/.well-known/jwks.json |
 | APPS open policy spec | https://github.com/veto-protocol/x402-policy-schema |
 | Mandate verifier (TS) | https://github.com/veto-protocol/mandate-verifier |
 | EVM contract source | https://github.com/veto-protocol/contracts |
 | Solana program source | https://github.com/veto-protocol/solana-program |
-| Veto's own published policies (transparency) | https://github.com/veto-protocol/veto-policies |
-| JWKS endpoint (public key) | https://veto-ai.com/.well-known/jwks.json |
+| Veto's own operator policies | https://github.com/veto-protocol/veto-policies |
 | Live contract on Base Sepolia | https://sepolia.basescan.org/address/0xCBbbC4b924AF40D29f135c3a88b6F650d55d92c5 |
 
 ---
 
 ## Status
 
-**v0.6** — public, dogfooded end-to-end, contract live on Base Sepolia. Active development.
+**v1.0** &mdash; public. CLI shipping on npm and PyPI. Engine deployed. Transparency feed live. Contract live on Base Sepolia and Solana Devnet. Audited mainnet contracts ship in v2.
 
 ## License
 
@@ -282,8 +250,8 @@ Elastic License v2 (ELv2). See [LICENSE](LICENSE) for the full text and copyrigh
 
 <div align="center">
 
-**Documentation for Veto.**<br>
-<sub>The safety layer for AI agents that spend money.</sub>
+**The governance layer for AI agent payments.**<br>
+<sub>Owner-defined policy. Signed verdicts. Any rail.</sub>
 
 <br><br>
 
